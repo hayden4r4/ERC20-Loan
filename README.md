@@ -1,4 +1,4 @@
-## ERC20 Token Loan Contract
+# **ERC20 Token Loan Contract**
 
 A loan contract for ERC20 tokens written in solidity. Currently only supports ETH.
 
