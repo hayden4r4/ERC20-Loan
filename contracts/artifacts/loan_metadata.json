@@ -19,6 +19,13 @@
 			},
 			{
 				"inputs": [],
+				"name": "freeCollateral",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
 				"name": "fundLoan",
 				"outputs": [],
 				"stateMutability": "payable",
@@ -143,7 +150,7 @@
 								"type": "uint256"
 							}
 						],
-						"internalType": "struct loan.lendingTerms",
+						"internalType": "struct loan.LendingTerms",
 						"name": "",
 						"type": "tuple"
 					}
@@ -227,8 +234,10 @@
 			}
 		],
 		"devdoc": {
+			"author": "Hayden Rose github: https://github.com/hayden4r4/ERC20-Loan",
 			"kind": "dev",
 			"methods": {},
+			"title": "ERC20-Loan",
 			"version": 1
 		},
 		"userdoc": {
@@ -254,10 +263,10 @@
 	},
 	"sources": {
 		"contracts/loan.sol": {
-			"keccak256": "0x680b7426953df2acba166f6c770747812985b4355d47659bd2e1b5496bd5405a",
+			"keccak256": "0xc2c851036b8a5d68316930d52e36a1fcf04a0d82d1da9e8b6e7924af29a455c7",
 			"urls": [
-				"bzz-raw://eb5bd0df7624d13e08f79d728393b360d928fa551df874cd75db855ff59e7c59",
-				"dweb:/ipfs/QmSL7Hq7KJcca8Nq17u49rF3XRRcF2BET8ETabjG2WsTFx"
+				"bzz-raw://5899a8aa16288fa72cc8a51c165f13665e556388e6fcc40988a11363d16341d4",
+				"dweb:/ipfs/QmSLSgUenxwkEdu1r7Qd5vjhHMdVEdigY7AUssySSY6epE"
 			]
 		}
 	},
