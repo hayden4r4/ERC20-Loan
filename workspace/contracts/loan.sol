@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 /// @author Hayden Rose
 /// github: https://github.com/hayden4r4/ERC20-Loan
 
-import {ABDKMathQuad} from "./ABDKMathQuad.sol";
+import "./ABDKMathQuad.sol";
 
 contract loan {
     /// @dev Contains main loan contract

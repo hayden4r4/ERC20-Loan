@@ -122,12 +122,12 @@
 							},
 							{
 								"internalType": "uint256",
-								"name": "prepayment_penalty",
+								"name": "late_fee",
 								"type": "uint256"
 							},
 							{
 								"internalType": "uint256",
-								"name": "late_fee",
+								"name": "prepayment_penalty",
 								"type": "uint256"
 							},
 							{
@@ -296,10 +296,10 @@
 			]
 		},
 		"workspace/contracts/loan.sol": {
-			"keccak256": "0x821e1ec530574187b50dee2575a34564abc4d71691615912c5fb2b53e662913a",
+			"keccak256": "0x43109471f3ff8a6266b308d152f86da0116dcd013245e0554db3f7bb1584a985",
 			"urls": [
-				"bzz-raw://52611f2470d236ab7e04453cf13bdc7cf7286287f4728f7189ff1c7f203603f8",
-				"dweb:/ipfs/QmT1Z2Kbjt5beyycin6FBSrdj26q1yMpyrMBcxubzH6Tmm"
+				"bzz-raw://f76f4b66b3f0fc89a90bc19b816a67a6f1f2a046fd70ec44365245b9d4c98a86",
+				"dweb:/ipfs/Qmdf3s2PKHJ1VycZcBioggsgSBBnnefJj5FypCfWUMBtQf"
 			]
 		}
 	},
