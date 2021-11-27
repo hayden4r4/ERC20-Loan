@@ -4,6 +4,8 @@ pragma solidity ^0.8.10;
 /// @author Hayden Rose
 /// github: https://github.com/hayden4r4/ERC20-Loan
 
+import {ABDKMathQuad} from "./ABDKMathQuad.sol";
+
 contract loan {
     /// @dev Contains main loan contract
     /** @notice This is a standard 2-party balloon payment contract,
@@ -31,12 +33,12 @@ contract loan {
         */
         address lender; /// @param lender address of the issuing party (aka the lender)
         address borrower; /// @param borrower address of the borrowing party
-        uint256 initial_principal; /// @param initial_principal the initial total notional of the loan issued
+        uint256 principal; /// @param principal the initial total notional of the loan issued
         uint256 issuance_time; /// @param issuance_time the time since epoch of the issuance of the loan.  This is the time that the initial withdrawal of any principal is made
         uint256 term; /// @param term term of the loan in seconds
-        uint256 apr; /// @param apr annual percentage rate in 10**4 format
-        uint256 collateral_req; /// @param collateral_req % of loan initial_principal required to be stored in the contract as collateral in 10**4 format
-        uint256 prepayment_penalty; /// @param prepayment_penalty % of remaining outstanding_balance to charge as fee for paying early in 10**4 format
+        uint256 apr; /// @param apr annual percentage rate in decimal format * 10**18
+        uint256 collateral_req; /// @param collateral_req % of loan principal required to be stored in the contract as collateral in decimal format * 10**18
+        uint256 prepayment_penalty; /// @param prepayment_penalty % of remaining outstanding_balance to charge as fee for paying early in decimal format * 10**18
         uint256 prepayment_period; /// @param prepayment_period if prepayment_penalty != 0, the period of time in seconds after loan issuance that prepayment penalties are charged, must be < loan term.
         bool sliding_scale_prepayment_penalty; /// @param sliding_scale_prepayment_penalty A sliding scale for the prepayment_penalty, this reduces the % of the prepayment_penalty linearly as the time left in the prepayment period decreases.  The math is (time remaining in prepayment period / prepayment_period) * prepayment fee
         uint256 late_fee; /// @param late_fee the total notional fee in wei for a late payment (a payment made at a time > (issuance date + term + grace period))
@@ -68,6 +70,11 @@ contract loan {
         _;
     }
 
+    function changeLender(address new_lender) public onlyLender {
+        /// @dev Allows the lender to transfer ownership of the loan
+        terms.lender = new_lender;
+    }
+
     function getTerms() external view returns (LendingTerms memory) {
         /// @dev Returns the terms of the loan set by the lender
         /// @return LendingTerms A struct containing the terms of the loan
@@ -87,25 +94,10 @@ contract loan {
         return balances.collateral_balance;
     }
 
-    function getOutstandingBalance() external view returns (uint256) {
+    function getOutstandingBalance() public view returns (uint256) {
         /// @dev Returns the outstanding balance (principal + interest + fees) of the loan
         /// @return uint256 outstanding balance of the loan (principal + interest + fees) in wei
-        return balances.outstanding_balance;
-    }
-
-    function getSlidingScalePrepaymentFee() external view returns (uint256) {
-        /** @dev Calculates the sliding scale prepayment fee if set to true in loan terms.
-            This is a fee which declines linearlly to 0 as the prepayment period progresses.
-        */
-        /// @return uint256 the calculated prepayment fee
-        require(
-            terms.issuance_time != 0,
-            "loan must be issued before calling this method"
-        );
-        uint256 realized_prepayment_fee = (((((terms.issuance_time +
-            terms.prepayment_period) - block.timestamp) /
-            terms.prepayment_period) * terms.prepayment_penalty) / 100); // Prepayment fee percentage, multiply by payment to calculate total fee for a payment
-        return realized_prepayment_fee;
+        return balances.outstanding_balance + getFees();
     }
 
     function setTerms(
@@ -120,7 +112,11 @@ contract loan {
         uint256 grace_period // seconds
     ) external onlyLender {
         /// @dev Sets the terms of the loan
-        /// @notice The term of the loan must be greater than 0
+        /// @notice The term of the loan must be greater than 0. Terms are immutable after loan is issued.
+        require(
+            balances.outstanding_balance == 0,
+            "Terms cannot be changed after loan has been issued"
+        );
         require(term > 0, "term must be greater than zero");
         terms.borrower = borrower;
         terms.term = term;
@@ -136,7 +132,7 @@ contract loan {
 
     function fundLoan() external payable onlyLender {
         /// @dev Sends value to fund the loan, must be performed before terms are set, only lender can call
-        terms.initial_principal = msg.value;
+        terms.principal = msg.value;
     }
 
     function allocateCollateral() external payable onlyBorrower {
@@ -146,12 +142,15 @@ contract loan {
             "No collateral is necessary for this loan"
         );
         require(
-            terms.initial_principal > 0,
+            terms.principal > 0,
             "Loan must be funded before collateral is allocated"
         );
+        bytes16 collateral_amount = ABDKMathQuad.mul(
+            ABDKMathQuad.fromUInt(terms.collateral_req).div(ten18),
+            ABDKMathQuad.fromUInt(terms.principal)
+        );
         require(
-            msg.value >=
-                ((terms.collateral_req * terms.initial_principal) / 100),
+            ABDKMathQuad.fromUInt(msg.value) == collateral_amount,
             "Collateral allocated must be greater than or equal to the collateral requirement * initial principal of the loan"
         );
         balances.collateral_balance = msg.value;
@@ -166,10 +165,7 @@ contract loan {
             terms.borrower != address(0),
             "A borrower must be assigned before issuing loan"
         );
-        require(
-            terms.initial_principal != 0,
-            "Loan must be funded before issuing"
-        );
+        require(terms.principal != 0, "Loan must be funded before issuing");
         if (terms.collateral_req > 0) {
             require(
                 balances.collateral_balance > 0,
@@ -177,85 +173,98 @@ contract loan {
             );
         }
         (bool sent, bytes memory data) = terms.borrower.call{
-            value: terms.initial_principal
+            value: terms.principal
         }("");
         require(sent, "Failed to send payment");
 
         terms.issuance_time = block.timestamp;
-        balances.outstanding_balance = terms.initial_principal;
+        balances.outstanding_balance = terms.principal;
     }
 
-    bool private late_fee_charged;
+    using ABDKMathQuad for bytes16;
+    uint256 private YEAR = 31556952; /// seconds in a year, constant
+    bytes16 private immutable ten18 = ABDKMathQuad.fromUInt(10**18);
+    bytes16 private immutable YEAR_ = ABDKMathQuad.fromUInt(YEAR);
 
-    function determineFees(uint256 current_time, uint256 payment) private {
-        /** @dev Determines the fees if any will be added to the outstanding balance. Called upon payment by borrower.
-            The math on this is to multiply the apr by 10**12, allowing a divide by the number of seconds in 360 days in int format.
-            This is multiplied by the length of time the loan has been issued (in seconds), and then multiplied by the intial principal
-            to determine the total interest due.  This is then divided back by 10**12 and added to the outstanding balance.
+    function getFees() public view returns (uint256) {
+        /** @dev Calculates borrower fees. The math here is done using
+        the ABDKMathQuah library. The lack of floats greatly complicates
+        the math here and increases gas fees, but it is all very straightforward
+        and simple alculations and should be accurate with the library's safeguards.
         */
-        uint256 realized_prepayment_fee; /// @param realized_prepayment_fee the total prepayment fee realized by the borrower
-        uint256 YEAR = 31104000; /// @param YEAR number of seconds in 360 days
+        /// @return Returns the borrower total fee in wei. uint256 data type.
+        uint256 current_time = block.timestamp;
+        uint256 due = terms.issuance_time + terms.term;
+        uint256 prepayment_window = terms.issuance_time +
+            terms.prepayment_period;
+        bytes16 fee;
 
-        balances.outstanding_balance +=
-            ((((terms.apr * (10**12)) / YEAR) *
-                (block.timestamp - terms.issuance_time)) *
-                terms.initial_principal) /
-            (10**12);
-        if (current_time > (terms.issuance_time + terms.term)) {
-            /// @dev if late fees have already been charged, they can not be charged again, this is a failsafe to prevent reissuance of late fees and is probably unneccessary
-            if (late_fee_charged == false) {
-                balances.outstanding_balance += terms.late_fee;
-                late_fee_charged = true;
-            }
+        /// @dev Late Fee
+        if (
+            (terms.late_fee != 0) && ((due + terms.grace_period) < current_time)
+        ) {
+            fee = ABDKMathQuad.add(fee, ABDKMathQuad.fromUInt(terms.late_fee));
         }
 
-        if (terms.prepayment_penalty > 0) {
-            /// @dev if prepayment penalty is greater than 0 then calculates prepayment penalty
-            if (
-                (terms.issuance_time + terms.prepayment_period) <= current_time
-            ) {
-                require(
-                    payment == balances.outstanding_balance,
-                    "payment is larger than outstanding balance"
+        /// @dev Intereest Fee
+        /// @notice Uses simple interest calculation
+        bytes16 interest_per_second = ABDKMathQuad
+            .fromUInt(terms.apr)
+            .div(ten18)
+            .div(YEAR_);
+        bytes16 total_interest_rate = ABDKMathQuad
+            .fromUInt(current_time - terms.issuance_time)
+            .mul(interest_per_second); /// to - from
+        bytes16 total_interest_fee = ABDKMathQuad.fromUInt(terms.principal).mul(
+            total_interest_rate
+        );
+        fee = ABDKMathQuad.add(fee, total_interest_fee);
+
+        /// @dev Prepayment Fee
+        /// @notice Decides whether to use a sliding prepayment penalty and then calculates it
+        if (
+            (terms.prepayment_period != 0) && (current_time < prepayment_window)
+        ) {
+            if (terms.sliding_scale_prepayment_penalty) {
+                bytes16 time_left_in_window = ABDKMathQuad.fromUInt(
+                    prepayment_window - current_time
                 );
+                bytes16 sliding_scale_fee = ABDKMathQuad
+                    .div(
+                        time_left_in_window,
+                        ABDKMathQuad.fromUInt(terms.prepayment_period)
+                    )
+                    .mul(ABDKMathQuad.fromUInt(terms.prepayment_penalty))
+                    .mul(ABDKMathQuad.fromUInt(terms.principal).div(ten18));
+                fee = ABDKMathQuad.add(fee, sliding_scale_fee);
             } else {
-                if (terms.sliding_scale_prepayment_penalty == true) {
-                    realized_prepayment_fee =
-                        (((((terms.issuance_time + terms.prepayment_period) -
-                            current_time) / terms.prepayment_period) *
-                            terms.prepayment_penalty) * payment) /
-                        100;
-                } else {
-                    realized_prepayment_fee =
-                        (terms.prepayment_penalty * payment) /
-                        100;
-                }
-
-                require(
-                    payment <=
-                        balances.outstanding_balance + realized_prepayment_fee,
-                    "payment is larger than outstanding balance + the prepayment fee"
+                bytes16 prepayment_fee = ABDKMathQuad.mul(
+                    ABDKMathQuad.fromUInt(terms.principal),
+                    ABDKMathQuad.fromUInt(terms.prepayment_penalty).div(ten18)
                 );
-
-                balances.outstanding_balance += realized_prepayment_fee;
+                fee = ABDKMathQuad.add(fee, prepayment_fee);
             }
         }
-        balances.outstanding_balance -= payment; /// subtracts payment from outstanding balance
+        return fee.toUInt();
     }
 
     function makePayment() external payable onlyBorrower {
         /// @dev Method to send value to contract to make payment on loan, can only be called by borrower
-        uint256 current_time = block.timestamp;
+        /// @notice Sending a payment equal to the return value of the getOutstandingBalance method is the ideal payment flow
         uint256 payment = msg.value;
-        determineFees(current_time, payment);
-        freeCollateral();
+        balances.outstanding_balance = getOutstandingBalance();
+        require(
+            payment == balances.outstanding_balance,
+            "Payment must be equal to the outstanding balance (principal + interest + fees)"
+        );
         /// @dev Automatically withdrawals payment made to the contract back into the lender's wallet
         (bool sent, bytes memory data) = terms.lender.call{
             value: address(this).balance
         }("");
+        freeCollateral();
     }
 
-    function freeCollateral() public payable onlyBorrower {
+    function freeCollateral() internal onlyBorrower {
         /// @dev Frees the collateral back to the borrowers wallet, can only be called by borrower internally
         require(
             balances.outstanding_balance <= 0,
@@ -273,6 +282,10 @@ contract loan {
             withdrawn to the lender's wallet.  This method serves as a failsafe and
             can only be called by the lender.
         */
+        require(
+            address(this).balance > 0,
+            "Contract balance is 0, there is nothing available to withdraw"
+        );
         uint256 withdrawable_amount = address(this).balance -
             balances.collateral_balance;
         (bool sent, bytes memory data) = terms.lender.call{

@@ -1,0 +1,286 @@
+{
+	"compiler": {
+		"version": "0.8.10+commit.fc410830"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [],
+				"stateMutability": "nonpayable",
+				"type": "constructor"
+			},
+			{
+				"inputs": [],
+				"name": "allocateCollateral",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "new_lender",
+						"type": "address"
+					}
+				],
+				"name": "changeLender",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "fundLoan",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "getCollateralBalance",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "getContractBalance",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "getFees",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "getOutstandingBalance",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "getTerms",
+				"outputs": [
+					{
+						"components": [
+							{
+								"internalType": "address",
+								"name": "lender",
+								"type": "address"
+							},
+							{
+								"internalType": "address",
+								"name": "borrower",
+								"type": "address"
+							},
+							{
+								"internalType": "uint256",
+								"name": "principal",
+								"type": "uint256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "issuance_time",
+								"type": "uint256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "term",
+								"type": "uint256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "apr",
+								"type": "uint256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "collateral_req",
+								"type": "uint256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "prepayment_penalty",
+								"type": "uint256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "prepayment_period",
+								"type": "uint256"
+							},
+							{
+								"internalType": "bool",
+								"name": "sliding_scale_prepayment_penalty",
+								"type": "bool"
+							},
+							{
+								"internalType": "uint256",
+								"name": "late_fee",
+								"type": "uint256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "grace_period",
+								"type": "uint256"
+							}
+						],
+						"internalType": "struct loan.LendingTerms",
+						"name": "",
+						"type": "tuple"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "issueLoan",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "makePayment",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "borrower",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "term",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "apr",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "collateral_req",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "prepayment_penalty",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "prepayment_period",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bool",
+						"name": "sliding_scale_prepayment_penalty",
+						"type": "bool"
+					},
+					{
+						"internalType": "uint256",
+						"name": "late_fee",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "grace_period",
+						"type": "uint256"
+					}
+				],
+				"name": "setTerms",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "withdraw",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"workspace/contracts/loan.sol": "loan"
+		},
+		"evmVersion": "london",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"workspace/contracts/ABDKMathQuad.sol": {
+			"keccak256": "0x9694a9f6fcadd4fa917efa674de42a74b8fbab8d68924f771ea5cc5e1a301434",
+			"license": "BSD-4-Clause",
+			"urls": [
+				"bzz-raw://5ab2de42e1d920443704dcc9e1de76157dd1df38cf770e76f879c7a6cc93b796",
+				"dweb:/ipfs/QmXLxE4cJDph4EtVhsCP4aik5PLFauFABv2o4ea47iDwDo"
+			]
+		},
+		"workspace/contracts/loan.sol": {
+			"keccak256": "0x992f989f7aa669b1996634f10e8f3278e2d58cc5a077228d8096679248d29054",
+			"urls": [
+				"bzz-raw://fc7ba090989bfe35fa45c7c1dc4402c7b2f8185660435d87e9a662750ba52f21",
+				"dweb:/ipfs/QmepHb4FvKgicBKyuPRCbK8QurFvWdSeMoTYWkizv9tqfj"
+			]
+		}
+	},
+	"version": 1
+}
