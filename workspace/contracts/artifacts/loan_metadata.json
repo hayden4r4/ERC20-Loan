@@ -112,16 +112,6 @@
 							},
 							{
 								"internalType": "uint256",
-								"name": "issuance_time",
-								"type": "uint256"
-							},
-							{
-								"internalType": "uint256",
-								"name": "term",
-								"type": "uint256"
-							},
-							{
-								"internalType": "uint256",
 								"name": "apr",
 								"type": "uint256"
 							},
@@ -137,28 +127,38 @@
 							},
 							{
 								"internalType": "uint256",
-								"name": "prepayment_period",
+								"name": "late_fee",
 								"type": "uint256"
+							},
+							{
+								"internalType": "uint48",
+								"name": "prepayment_period",
+								"type": "uint48"
+							},
+							{
+								"internalType": "uint48",
+								"name": "issuance_time",
+								"type": "uint48"
+							},
+							{
+								"internalType": "uint48",
+								"name": "term",
+								"type": "uint48"
+							},
+							{
+								"internalType": "uint48",
+								"name": "grace_period",
+								"type": "uint48"
+							},
+							{
+								"internalType": "uint48",
+								"name": "time_before_default",
+								"type": "uint48"
 							},
 							{
 								"internalType": "bool",
 								"name": "sliding_scale_prepayment_penalty",
 								"type": "bool"
-							},
-							{
-								"internalType": "uint256",
-								"name": "late_fee",
-								"type": "uint256"
-							},
-							{
-								"internalType": "uint256",
-								"name": "grace_period",
-								"type": "uint256"
-							},
-							{
-								"internalType": "uint256",
-								"name": "default_expiry",
-								"type": "uint256"
 							}
 						],
 						"internalType": "struct loan.LendingTerms",
@@ -198,9 +198,9 @@
 						"type": "address"
 					},
 					{
-						"internalType": "uint256",
+						"internalType": "uint48",
 						"name": "term",
-						"type": "uint256"
+						"type": "uint48"
 					},
 					{
 						"internalType": "uint256",
@@ -218,9 +218,9 @@
 						"type": "uint256"
 					},
 					{
-						"internalType": "uint256",
+						"internalType": "uint48",
 						"name": "prepayment_period",
-						"type": "uint256"
+						"type": "uint48"
 					},
 					{
 						"internalType": "bool",
@@ -233,14 +233,14 @@
 						"type": "uint256"
 					},
 					{
-						"internalType": "uint256",
+						"internalType": "uint48",
 						"name": "grace_period",
-						"type": "uint256"
+						"type": "uint48"
 					},
 					{
-						"internalType": "uint256",
-						"name": "default_expiry",
-						"type": "uint256"
+						"internalType": "uint48",
+						"name": "time_before_default",
+						"type": "uint48"
 					}
 				],
 				"name": "setTerms",
@@ -296,10 +296,10 @@
 			]
 		},
 		"workspace/contracts/loan.sol": {
-			"keccak256": "0x6b8118d3c6a79f02dd8f10b94e09f7a24756bcca361ba33737487e35ee31005e",
+			"keccak256": "0x821e1ec530574187b50dee2575a34564abc4d71691615912c5fb2b53e662913a",
 			"urls": [
-				"bzz-raw://167e01d1699a8f14f7900bc08a9996c1e69bf3bbeb009abadc469b7b3c366674",
-				"dweb:/ipfs/Qmebw4F6bN9NgUxhKX6uTzoXWQXCzb4ffNeqSvEJCoLYQS"
+				"bzz-raw://52611f2470d236ab7e04453cf13bdc7cf7286287f4728f7189ff1c7f203603f8",
+				"dweb:/ipfs/QmT1Z2Kbjt5beyycin6FBSrdj26q1yMpyrMBcxubzH6Tmm"
 			]
 		}
 	},

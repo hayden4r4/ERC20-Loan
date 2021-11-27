@@ -26,16 +26,16 @@ contract loan {
         address lender; /// @param lender address of the issuing party (aka the lender)
         address borrower; /// @param borrower address of the borrowing party
         uint256 principal; /// @param principal the initial total notional of the loan issued
-        uint256 issuance_time; /// @param issuance_time the time since epoch of the issuance of the loan.  This is the time that the initial withdrawal of any principal is made
-        uint256 term; /// @param term term of the loan in seconds
         uint256 apr; /// @param apr annual percentage rate in decimal format * 10**18
         uint256 collateral_req; /// @param collateral_req % of loan principal required to be stored in the contract as collateral in decimal format * 10**18
-        uint256 prepayment_penalty; /// @param prepayment_penalty % of remaining outstanding_balance to charge as fee for paying early in decimal format * 10**18
-        uint256 prepayment_period; /// @param prepayment_period if prepayment_penalty != 0, the period of time in seconds after loan issuance that prepayment penalties are charged, must be < loan term.
-        bool sliding_scale_prepayment_penalty; /// @param sliding_scale_prepayment_penalty A sliding scale for the prepayment_penalty, this reduces the % of the prepayment_penalty linearly as the time left in the prepayment period decreases.  The math is (time remaining in prepayment period / prepayment_period) * prepayment fee
         uint256 late_fee; /// @param late_fee the total notional fee in wei for a late payment (a payment made at a time > (issuance date + term + grace period))
-        uint256 grace_period; /// @param grace_period the period of time in seconds after issuance date + term that a borrower can repay the loan without incurring a late fee (interest is still accrued in this period)
-        uint256 time_before_default; /// @param default_period the time (in seconds) after loan term expiration in which default is entered and collateral is seized
+        uint256 prepayment_penalty; /// @param prepayment_penalty % of remaining outstanding_balance to charge as fee for paying early in decimal format * 10**18
+        uint48 prepayment_period; /// @param prepayment_period if prepayment_penalty != 0, the period of time in seconds after loan issuance that prepayment penalties are charged, must be < loan term.
+        uint48 issuance_time; /// @param issuance_time the time since epoch of the issuance of the loan.  This is the time that the initial withdrawal of any principal is made
+        uint48 term; /// @param term term of the loan in seconds
+        uint48 grace_period; /// @param grace_period the period of time in seconds after issuance date + term that a borrower can repay the loan without incurring a late fee (interest is still accrued in this period)
+        uint48 time_before_default; /// @param default_period the time (in seconds) after loan term expiration in which default is entered and collateral is seized
+        bool sliding_scale_prepayment_penalty; /// @param sliding_scale_prepayment_penalty A sliding scale for the prepayment_penalty, this reduces the % of the prepayment_penalty linearly as the time left in the prepayment period decreases.  The math is (time remaining in prepayment period / prepayment_period) * prepayment fee
     }
 
     LendingTerms private terms;
@@ -101,15 +101,15 @@ contract loan {
 
     function setTerms(
         address borrower, // address
-        uint256 term, // seconds
+        uint48 term, // seconds
         uint256 apr, // % * 10**4
         uint256 collateral_req, // % * 10**4
         uint256 prepayment_penalty, // % * 10**4
-        uint256 prepayment_period, // seconds
+        uint48 prepayment_period, // seconds
         bool sliding_scale_prepayment_penalty, // bool
         uint256 late_fee, // wei
-        uint256 grace_period, // seconds
-        uint256 time_before_default // seconds
+        uint48 grace_period, // seconds
+        uint48 time_before_default // seconds
     ) external onlyLender {
         /// @dev Sets the terms of the loan
         /// @notice The term of the loan must be greater than 0. Terms are immutable after loan is issued.
@@ -133,6 +133,7 @@ contract loan {
 
     function fundLoan() external payable onlyLender {
         /// @dev Sends value to fund the loan, must be performed before terms are set, only lender can call
+        require(msg.value > 0, "Value must be greater than 0");
         terms.principal = msg.value;
     }
 
@@ -178,7 +179,7 @@ contract loan {
         }("");
         require(sent, "Failed to send payment");
 
-        terms.issuance_time = block.timestamp;
+        terms.issuance_time = uint48(block.timestamp);
     }
 
     using ABDKMathQuad for bytes16;
