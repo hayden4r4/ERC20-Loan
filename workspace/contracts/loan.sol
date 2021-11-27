@@ -43,6 +43,7 @@ contract loan {
         bool sliding_scale_prepayment_penalty; /// @param sliding_scale_prepayment_penalty A sliding scale for the prepayment_penalty, this reduces the % of the prepayment_penalty linearly as the time left in the prepayment period decreases.  The math is (time remaining in prepayment period / prepayment_period) * prepayment fee
         uint256 late_fee; /// @param late_fee the total notional fee in wei for a late payment (a payment made at a time > (issuance date + term + grace period))
         uint256 grace_period; /// @param grace_period the period of time in seconds after issuance date + term that a borrower can repay the loan without incurring a late fee (interest is still accrued in this period)
+        uint256 default_expiry; /// @param default_period the time (in seconds) after loan term expiration in which default is entered and collateral is seized
     }
 
     LendingTerms private terms;
@@ -109,7 +110,8 @@ contract loan {
         uint256 prepayment_period, // seconds
         bool sliding_scale_prepayment_penalty, // bool
         uint256 late_fee, // wei
-        uint256 grace_period // seconds
+        uint256 grace_period, // seconds
+        uint256 default_expiry // seconds
     ) external onlyLender {
         /// @dev Sets the terms of the loan
         /// @notice The term of the loan must be greater than 0. Terms are immutable after loan is issued.
@@ -128,6 +130,7 @@ contract loan {
             .sliding_scale_prepayment_penalty = sliding_scale_prepayment_penalty;
         terms.late_fee = late_fee;
         terms.grace_period = grace_period;
+        terms.default_expiry = default_expiry;
     }
 
     function fundLoan() external payable onlyLender {
@@ -274,6 +277,27 @@ contract loan {
             value: balances.collateral_balance
         }("");
         require(sent, "Failed to withdraw collateral");
+    }
+
+    function seizeCollateral() external payable onlyLender {
+        /// @dev Allows lender to seize collateral if term + default_expiry is past, only lender can call
+        require(
+            (terms.term + terms.issuance_time + terms.default_expiry) <
+                block.timestamp,
+            "Collateral can only be seized once loan is in default"
+        );
+
+        require(
+            balances.collateral_balance > 0,
+            "There is currently no collateral to seize"
+        );
+
+        uint256 withdrawable_amount = address(this).balance -
+            balances.collateral_balance;
+        (bool sent, bytes memory data) = terms.lender.call{
+            value: withdrawable_amount
+        }("");
+        require(sent, "Failed to withdraw");
     }
 
     function withdraw() public payable onlyLender {
