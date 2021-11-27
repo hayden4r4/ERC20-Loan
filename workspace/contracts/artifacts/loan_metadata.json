@@ -154,6 +154,11 @@
 								"internalType": "uint256",
 								"name": "grace_period",
 								"type": "uint256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "default_expiry",
+								"type": "uint256"
 							}
 						],
 						"internalType": "struct loan.LendingTerms",
@@ -174,6 +179,13 @@
 			{
 				"inputs": [],
 				"name": "makePayment",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "seizeCollateral",
 				"outputs": [],
 				"stateMutability": "payable",
 				"type": "function"
@@ -224,6 +236,11 @@
 						"internalType": "uint256",
 						"name": "grace_period",
 						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "default_expiry",
+						"type": "uint256"
 					}
 				],
 				"name": "setTerms",
@@ -246,7 +263,11 @@
 		},
 		"userdoc": {
 			"kind": "user",
-			"methods": {},
+			"methods": {
+				"getContractBalance()": {
+					"notice": "notional amount held in the contract as collateral"
+				}
+			},
 			"version": 1
 		}
 	},
@@ -275,10 +296,10 @@
 			]
 		},
 		"workspace/contracts/loan.sol": {
-			"keccak256": "0x992f989f7aa669b1996634f10e8f3278e2d58cc5a077228d8096679248d29054",
+			"keccak256": "0x6b8118d3c6a79f02dd8f10b94e09f7a24756bcca361ba33737487e35ee31005e",
 			"urls": [
-				"bzz-raw://fc7ba090989bfe35fa45c7c1dc4402c7b2f8185660435d87e9a662750ba52f21",
-				"dweb:/ipfs/QmepHb4FvKgicBKyuPRCbK8QurFvWdSeMoTYWkizv9tqfj"
+				"bzz-raw://167e01d1699a8f14f7900bc08a9996c1e69bf3bbeb009abadc469b7b3c366674",
+				"dweb:/ipfs/Qmebw4F6bN9NgUxhKX6uTzoXWQXCzb4ffNeqSvEJCoLYQS"
 			]
 		}
 	},

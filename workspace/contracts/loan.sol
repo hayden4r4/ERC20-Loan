@@ -16,14 +16,6 @@ contract loan {
        withdraw principal and make payment on the loan.
     */
 
-    struct Balances {
-        /// @dev Contains balances for the contract
-        uint256 collateral_balance; /// @param collateral_balance notional amount held in the contract as collateral
-        uint256 outstanding_balance; /// @param outstanding_balance the total amount currently owed (principal + interest) on the loan
-    }
-
-    Balances private balances;
-
     struct LendingTerms {
         /// @dev The Terms of the contract
         /** @notice all percentages are in 10**4 format, meaning
@@ -43,7 +35,7 @@ contract loan {
         bool sliding_scale_prepayment_penalty; /// @param sliding_scale_prepayment_penalty A sliding scale for the prepayment_penalty, this reduces the % of the prepayment_penalty linearly as the time left in the prepayment period decreases.  The math is (time remaining in prepayment period / prepayment_period) * prepayment fee
         uint256 late_fee; /// @param late_fee the total notional fee in wei for a late payment (a payment made at a time > (issuance date + term + grace period))
         uint256 grace_period; /// @param grace_period the period of time in seconds after issuance date + term that a borrower can repay the loan without incurring a late fee (interest is still accrued in this period)
-        uint256 default_expiry; /// @param default_period the time (in seconds) after loan term expiration in which default is entered and collateral is seized
+        uint256 time_before_default; /// @param default_period the time (in seconds) after loan term expiration in which default is entered and collateral is seized
     }
 
     LendingTerms private terms;
@@ -82,6 +74,8 @@ contract loan {
         return terms;
     }
 
+    uint256 private collateral_balance; /// notional amount held in the contract as collateral
+
     function getContractBalance() external view returns (uint256) {
         /// @dev Returns the total balance currently in the contract
         /// @notice //total balance of the contract, note this also contains any collateral, so only the contracts balance - collateral is available to be withdrawn by the lender
@@ -92,13 +86,17 @@ contract loan {
     function getCollateralBalance() external view returns (uint256) {
         /// @dev Returns the balance of collateral currently held in the contract
         /// @return uint256 balance of collateral in the contract
-        return balances.collateral_balance;
+        return collateral_balance;
     }
 
     function getOutstandingBalance() public view returns (uint256) {
         /// @dev Returns the outstanding balance (principal + interest + fees) of the loan
         /// @return uint256 outstanding balance of the loan (principal + interest + fees) in wei
-        return balances.outstanding_balance + getFees();
+        require(
+            terms.issuance_time > 0 && terms.principal > 0,
+            "No outstanding balance since loan is either not issued or already paid off"
+        );
+        return terms.principal + getFees();
     }
 
     function setTerms(
@@ -111,12 +109,12 @@ contract loan {
         bool sliding_scale_prepayment_penalty, // bool
         uint256 late_fee, // wei
         uint256 grace_period, // seconds
-        uint256 default_expiry // seconds
+        uint256 time_before_default // seconds
     ) external onlyLender {
         /// @dev Sets the terms of the loan
         /// @notice The term of the loan must be greater than 0. Terms are immutable after loan is issued.
         require(
-            balances.outstanding_balance == 0,
+            getOutstandingBalance() == 0,
             "Terms cannot be changed after loan has been issued"
         );
         require(term > 0, "term must be greater than zero");
@@ -130,7 +128,7 @@ contract loan {
             .sliding_scale_prepayment_penalty = sliding_scale_prepayment_penalty;
         terms.late_fee = late_fee;
         terms.grace_period = grace_period;
-        terms.default_expiry = default_expiry;
+        terms.time_before_default = time_before_default;
     }
 
     function fundLoan() external payable onlyLender {
@@ -156,7 +154,7 @@ contract loan {
             ABDKMathQuad.fromUInt(msg.value) == collateral_amount,
             "Collateral allocated must be greater than or equal to the collateral requirement * initial principal of the loan"
         );
-        balances.collateral_balance = msg.value;
+        collateral_balance = msg.value;
     }
 
     function issueLoan() external payable onlyLender {
@@ -171,7 +169,7 @@ contract loan {
         require(terms.principal != 0, "Loan must be funded before issuing");
         if (terms.collateral_req > 0) {
             require(
-                balances.collateral_balance > 0,
+                collateral_balance > 0,
                 "Collateral must be allocated before issuing loan"
             );
         }
@@ -181,7 +179,6 @@ contract loan {
         require(sent, "Failed to send payment");
 
         terms.issuance_time = block.timestamp;
-        balances.outstanding_balance = terms.principal;
     }
 
     using ABDKMathQuad for bytes16;
@@ -254,46 +251,45 @@ contract loan {
     function makePayment() external payable onlyBorrower {
         /// @dev Method to send value to contract to make payment on loan, can only be called by borrower
         /// @notice Sending a payment equal to the return value of the getOutstandingBalance method is the ideal payment flow
-        uint256 payment = msg.value;
-        balances.outstanding_balance = getOutstandingBalance();
         require(
-            payment == balances.outstanding_balance,
+            msg.value == getOutstandingBalance(),
             "Payment must be equal to the outstanding balance (principal + interest + fees)"
         );
+        /// @dev Set principal to 0 as loan is now paid
+        terms.principal = 0;
+
         /// @dev Automatically withdrawals payment made to the contract back into the lender's wallet
-        (bool sent, bytes memory data) = terms.lender.call{
-            value: address(this).balance
-        }("");
+        terms.lender.call{value: address(this).balance}("");
         freeCollateral();
     }
 
     function freeCollateral() internal onlyBorrower {
         /// @dev Frees the collateral back to the borrowers wallet, can only be called by borrower internally
         require(
-            balances.outstanding_balance <= 0,
-            "Cannot free collateral while outstanding balance > 0"
+            terms.principal == 0 && terms.issuance_time > 0,
+            "Cannot free collateral while outstanding balance > 0 or loan has yet to be issued"
         );
-        (bool sent, bytes memory data) = terms.lender.call{
-            value: balances.collateral_balance
+        (bool sent, bytes memory data) = terms.borrower.call{
+            value: collateral_balance
         }("");
         require(sent, "Failed to withdraw collateral");
     }
 
     function seizeCollateral() external payable onlyLender {
-        /// @dev Allows lender to seize collateral if term + default_expiry is past, only lender can call
+        /// @dev Allows lender to seize collateral if term + time_before_default is past, only lender can call
         require(
-            (terms.term + terms.issuance_time + terms.default_expiry) <
+            (terms.term + terms.issuance_time + terms.time_before_default) <
                 block.timestamp,
             "Collateral can only be seized once loan is in default"
         );
 
         require(
-            balances.collateral_balance > 0,
+            collateral_balance > 0,
             "There is currently no collateral to seize"
         );
 
         uint256 withdrawable_amount = address(this).balance -
-            balances.collateral_balance;
+            collateral_balance;
         (bool sent, bytes memory data) = terms.lender.call{
             value: withdrawable_amount
         }("");
@@ -311,7 +307,7 @@ contract loan {
             "Contract balance is 0, there is nothing available to withdraw"
         );
         uint256 withdrawable_amount = address(this).balance -
-            balances.collateral_balance;
+            collateral_balance;
         (bool sent, bytes memory data) = terms.lender.call{
             value: withdrawable_amount
         }("");
