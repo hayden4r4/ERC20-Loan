@@ -273,7 +273,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"workspace/contracts/loan.sol": "loan"
+			"contracts/loan.sol": "loan"
 		},
 		"evmVersion": "london",
 		"libraries": {},
@@ -287,7 +287,7 @@
 		"remappings": []
 	},
 	"sources": {
-		"workspace/contracts/ABDKMathQuad.sol": {
+		"contracts/ABDKMathQuad.sol": {
 			"keccak256": "0x9694a9f6fcadd4fa917efa674de42a74b8fbab8d68924f771ea5cc5e1a301434",
 			"license": "BSD-4-Clause",
 			"urls": [
@@ -295,11 +295,11 @@
 				"dweb:/ipfs/QmXLxE4cJDph4EtVhsCP4aik5PLFauFABv2o4ea47iDwDo"
 			]
 		},
-		"workspace/contracts/loan.sol": {
-			"keccak256": "0x43109471f3ff8a6266b308d152f86da0116dcd013245e0554db3f7bb1584a985",
+		"contracts/loan.sol": {
+			"keccak256": "0xa9ddf6f589d894d5071b6bbd19c6d6b3dd8ea1d6eeeb983711c398795049ff23",
 			"urls": [
-				"bzz-raw://f76f4b66b3f0fc89a90bc19b816a67a6f1f2a046fd70ec44365245b9d4c98a86",
-				"dweb:/ipfs/Qmdf3s2PKHJ1VycZcBioggsgSBBnnefJj5FypCfWUMBtQf"
+				"bzz-raw://bad26578249472f27a6d8ac660f2114c12b43102a50b221d589c3559e623e909",
+				"dweb:/ipfs/QmPcMa8DbHoq44e59PcmbjKDPeaVP1v7tB9vwSGh4shCft"
 			]
 		}
 	},

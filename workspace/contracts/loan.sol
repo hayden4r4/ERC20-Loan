@@ -89,14 +89,14 @@ contract loan {
         return collateral_balance;
     }
 
-    function getOutstandingBalance() public view returns (uint256) {
+    function getOutstandingBalance() public view returns (bytes16) {
         /// @dev Returns the outstanding balance (principal + interest + fees) of the loan
         /// @return uint256 outstanding balance of the loan (principal + interest + fees) in wei
-        require(
-            terms.issuance_time > 0 && terms.principal > 0,
-            "No outstanding balance since loan is either not issued or already paid off"
-        );
-        return terms.principal + getFees();
+        if (terms.issuance_time == 0 || terms.principal == 0) {
+            return 0;
+        } else {
+            return ABDKMathQuad.fromUInt(terms.principal).add(getFees());
+        }
     }
 
     function setTerms(
@@ -187,80 +187,94 @@ contract loan {
     bytes16 private immutable ten18 = ABDKMathQuad.fromUInt(10**18);
     bytes16 private immutable YEAR_ = ABDKMathQuad.fromUInt(YEAR);
 
-    function getFees() public view returns (uint256) {
+    function getFees() public view returns (bytes16) {
         /** @dev Calculates borrower fees. The math here is done using
         the ABDKMathQuah library. The lack of floats greatly complicates
         the math here and increases gas fees, but it is all very straightforward
         and simple alculations and should be accurate with the library's safeguards.
         */
         /// @return Returns the borrower total fee in wei. uint256 data type.
-        uint256 current_time = block.timestamp;
-        uint256 due = terms.issuance_time + terms.term;
-        uint256 prepayment_window = terms.issuance_time +
-            terms.prepayment_period;
-        bytes16 fee;
+        if (terms.issuance_time == 0) {
+            return 0;
+        } else {
+            uint256 due = terms.issuance_time + terms.term;
+            uint256 prepayment_window = terms.issuance_time +
+                terms.prepayment_period;
+            bytes16 fee;
 
-        /// @dev Late Fee
-        if (
-            (terms.late_fee != 0) && ((due + terms.grace_period) < current_time)
-        ) {
-            fee = ABDKMathQuad.add(fee, ABDKMathQuad.fromUInt(terms.late_fee));
-        }
-
-        /// @dev Intereest Fee
-        /// @notice Uses simple interest calculation
-        bytes16 interest_per_second = ABDKMathQuad
-            .fromUInt(terms.apr)
-            .div(ten18)
-            .div(YEAR_);
-        bytes16 total_interest_rate = ABDKMathQuad
-            .fromUInt(current_time - terms.issuance_time)
-            .mul(interest_per_second); /// to - from
-        bytes16 total_interest_fee = ABDKMathQuad.fromUInt(terms.principal).mul(
-            total_interest_rate
-        );
-        fee = ABDKMathQuad.add(fee, total_interest_fee);
-
-        /// @dev Prepayment Fee
-        /// @notice Decides whether to use a sliding prepayment penalty and then calculates it
-        if (
-            (terms.prepayment_period != 0) && (current_time < prepayment_window)
-        ) {
-            if (terms.sliding_scale_prepayment_penalty) {
-                bytes16 time_left_in_window = ABDKMathQuad.fromUInt(
-                    prepayment_window - current_time
+            /// @dev Late Fee
+            if (
+                (terms.late_fee != 0) &&
+                ((due + terms.grace_period) < block.timestamp)
+            ) {
+                fee = ABDKMathQuad.add(
+                    fee,
+                    ABDKMathQuad.fromUInt(terms.late_fee)
                 );
-                bytes16 sliding_scale_fee = ABDKMathQuad
-                    .div(
-                        time_left_in_window,
-                        ABDKMathQuad.fromUInt(terms.prepayment_period)
-                    )
-                    .mul(ABDKMathQuad.fromUInt(terms.prepayment_penalty))
-                    .mul(ABDKMathQuad.fromUInt(terms.principal).div(ten18));
-                fee = ABDKMathQuad.add(fee, sliding_scale_fee);
-            } else {
-                bytes16 prepayment_fee = ABDKMathQuad.mul(
-                    ABDKMathQuad.fromUInt(terms.principal),
-                    ABDKMathQuad.fromUInt(terms.prepayment_penalty).div(ten18)
-                );
-                fee = ABDKMathQuad.add(fee, prepayment_fee);
             }
+
+            /// @dev Intereest Fee
+            /// @notice Uses simple interest calculation
+            bytes16 total_interest_fee = ABDKMathQuad
+                .fromUInt(terms.principal)
+                .mul(
+                    ABDKMathQuad
+                        .fromUInt(block.timestamp - terms.issuance_time)
+                        .div(YEAR_)
+                        .mul(ABDKMathQuad.fromUInt(terms.apr).div(ten18))
+                );
+            fee = ABDKMathQuad.add(fee, total_interest_fee);
+
+            /// @dev Prepayment Fee
+            /// @notice Decides whether to use a sliding prepayment penalty and then calculates it
+            if (
+                (terms.prepayment_period != 0) &&
+                (block.timestamp < prepayment_window)
+            ) {
+                if (terms.sliding_scale_prepayment_penalty) {
+                    bytes16 time_left_in_window = ABDKMathQuad.fromUInt(
+                        prepayment_window - block.timestamp
+                    );
+                    bytes16 sliding_scale_fee = ABDKMathQuad
+                        .div(
+                            time_left_in_window,
+                            ABDKMathQuad.fromUInt(terms.prepayment_period)
+                        )
+                        .mul(
+                            ABDKMathQuad.div(
+                                ABDKMathQuad.fromUInt(terms.prepayment_penalty),
+                                ten18
+                            )
+                        )
+                        .mul(ABDKMathQuad.fromUInt(terms.principal));
+                    fee = ABDKMathQuad.add(fee, sliding_scale_fee);
+                } else {
+                    bytes16 prepayment_fee = ABDKMathQuad.mul(
+                        ABDKMathQuad.fromUInt(terms.principal),
+                        ABDKMathQuad.fromUInt(terms.prepayment_penalty).div(
+                            ten18
+                        )
+                    );
+                    fee = ABDKMathQuad.add(fee, prepayment_fee);
+                }
+            }
+            return fee;
         }
-        return fee.toUInt();
     }
 
     function makePayment() external payable onlyBorrower {
         /// @dev Method to send value to contract to make payment on loan, can only be called by borrower
         /// @notice Sending a payment equal to the return value of the getOutstandingBalance method is the ideal payment flow
         require(
-            msg.value == getOutstandingBalance(),
-            "Payment must be equal to the outstanding balance (principal + interest + fees)"
+            msg.value != 0 &&
+                ABDKMathQuad.fromUInt(msg.value) == getOutstandingBalance(),
+            "Payment must be non-zero and equal to the outstanding balance (principal + interest + fees)"
         );
         /// @dev Set principal to 0 as loan is now paid
         terms.principal = 0;
 
         /// @dev Automatically withdrawals payment made to the contract back into the lender's wallet
-        terms.lender.call{value: address(this).balance}("");
+        terms.lender.call{value: msg.value}("");
         freeCollateral();
     }
 
@@ -307,10 +321,12 @@ contract loan {
             address(this).balance > 0,
             "Contract balance is 0, there is nothing available to withdraw"
         );
-        uint256 withdrawable_amount = address(this).balance -
-            collateral_balance;
+        require(
+            (address(this).balance - collateral_balance) > 0,
+            "There is no value to withdraw"
+        );
         (bool sent, bytes memory data) = terms.lender.call{
-            value: withdrawable_amount
+            value: address(this).balance - collateral_balance
         }("");
         require(sent, "Failed to withdraw");
     }
