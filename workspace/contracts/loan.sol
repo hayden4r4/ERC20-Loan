@@ -89,13 +89,13 @@ contract loan {
         return collateral_balance;
     }
 
-    function getOutstandingBalance() public view returns (bytes16) {
+    function getOutstandingBalance() public view returns (uint256) {
         /// @dev Returns the outstanding balance (principal + interest + fees) of the loan
         /// @return uint256 outstanding balance of the loan (principal + interest + fees) in wei
         if (terms.issuance_time == 0 || terms.principal == 0) {
             return 0;
         } else {
-            return ABDKMathQuad.fromUInt(terms.principal).add(getFees());
+            return ABDKMathQuad.toUInt(ABDKMathQuad.fromUInt(terms.principal).add(getFees()));
         }
     }
 
@@ -131,10 +131,11 @@ contract loan {
         terms.time_before_default = time_before_default;
     }
 
-    function fundLoan() external payable onlyLender {
+    function fundAndIssueLoan() external payable onlyLender {
         /// @dev Sends value to fund the loan, must be performed before terms are set, only lender can call
         require(msg.value > 0, "Value must be greater than 0");
         terms.principal = msg.value;
+        issueLoan();
     }
 
     function allocateCollateral() external payable onlyBorrower {
@@ -158,7 +159,7 @@ contract loan {
         collateral_balance = msg.value;
     }
 
-    function issueLoan() external payable onlyLender {
+    function issueLoan() internal onlyLender {
         /** @dev Issues the loan by sending the funds to the borrower, can only be called by lender
             Loan must be funded, terms must be set, and if collateral is required, collateral must be allocated
             before issuing the loan.
@@ -265,9 +266,10 @@ contract loan {
     function makePayment() external payable onlyBorrower {
         /// @dev Method to send value to contract to make payment on loan, can only be called by borrower
         /// @notice Sending a payment equal to the return value of the getOutstandingBalance method is the ideal payment flow
+        
         require(
             msg.value != 0 &&
-                ABDKMathQuad.fromUInt(msg.value) == getOutstandingBalance(),
+                msg.value >= getOutstandingBalance(),
             "Payment must be non-zero and equal to the outstanding balance (principal + interest + fees)"
         );
         /// @dev Set principal to 0 as loan is now paid
@@ -276,6 +278,9 @@ contract loan {
         /// @dev Automatically withdrawals payment made to the contract back into the lender's wallet
         terms.lender.call{value: msg.value}("");
         freeCollateral();
+        if (address(this).balance > 0) {
+            terms.borrower.call{value: msg.value}("");
+        }
     }
 
     function freeCollateral() internal onlyBorrower {

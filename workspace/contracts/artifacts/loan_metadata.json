@@ -68,9 +68,9 @@
 				"name": "getFees",
 				"outputs": [
 					{
-						"internalType": "uint256",
+						"internalType": "bytes16",
 						"name": "",
-						"type": "uint256"
+						"type": "bytes16"
 					}
 				],
 				"stateMutability": "view",
@@ -81,9 +81,9 @@
 				"name": "getOutstandingBalance",
 				"outputs": [
 					{
-						"internalType": "uint256",
+						"internalType": "bytes16",
 						"name": "",
-						"type": "uint256"
+						"type": "bytes16"
 					}
 				],
 				"stateMutability": "view",
@@ -296,10 +296,10 @@
 			]
 		},
 		"contracts/loan.sol": {
-			"keccak256": "0xa9ddf6f589d894d5071b6bbd19c6d6b3dd8ea1d6eeeb983711c398795049ff23",
+			"keccak256": "0xce39be56444a3823f49fb1b2104fbd43595fe39dc3e8e3baaa3ab688247f4568",
 			"urls": [
-				"bzz-raw://bad26578249472f27a6d8ac660f2114c12b43102a50b221d589c3559e623e909",
-				"dweb:/ipfs/QmPcMa8DbHoq44e59PcmbjKDPeaVP1v7tB9vwSGh4shCft"
+				"bzz-raw://4fd10dff89b1588083a959ad57da959de63fadc7bbd5542b3d8c07ed65835d94",
+				"dweb:/ipfs/QmaJDzQR17P4fmmj3gBhCQiRcgRNMQvev9hdLB9AovoqZz"
 			]
 		}
 	},
