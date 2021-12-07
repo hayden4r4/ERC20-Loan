@@ -18,10 +18,8 @@ contract loan {
 
     struct LendingTerms {
         /// @dev The Terms of the contract
-        /** @notice all percentages are in 10**4 format, meaning
-            only up to 4 decimals are supported in order to avoid
-            truncating errors.  So 6.54% would be inputted as 65400.
-            All notional values are in wei. All time values are in seconds.
+        /** @notice All percentages should be entered in decimal * 10**18 format.
+                    All notional values are in wei. All time values are in seconds.
         */
         address lender; /// @param lender address of the issuing party (aka the lender)
         address borrower; /// @param borrower address of the borrowing party
@@ -95,7 +93,10 @@ contract loan {
         if (terms.issuance_time == 0 || terms.principal == 0) {
             return 0;
         } else {
-            return ABDKMathQuad.toUInt(ABDKMathQuad.fromUInt(terms.principal).add(getFees()));
+            return
+                ABDKMathQuad.toUInt(
+                    ABDKMathQuad.fromUInt(terms.principal).add(getFees())
+                );
         }
     }
 
@@ -266,10 +267,9 @@ contract loan {
     function makePayment() external payable onlyBorrower {
         /// @dev Method to send value to contract to make payment on loan, can only be called by borrower
         /// @notice Sending a payment equal to the return value of the getOutstandingBalance method is the ideal payment flow
-        
+
         require(
-            msg.value != 0 &&
-                msg.value >= getOutstandingBalance(),
+            msg.value != 0 && msg.value >= getOutstandingBalance(),
             "Payment must be non-zero and equal to the outstanding balance (principal + interest + fees)"
         );
         /// @dev Set principal to 0 as loan is now paid
